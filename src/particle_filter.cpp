@@ -183,6 +183,29 @@ void ParticleFilter::resample() {
    *   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
    */
 
+   //implementing Sebastian Thrun's Resampling Wheel method
+   std::random_device rd;
+   std::mt19937 gen(rd());
+   std::discrete_distribution<> dist_index(0, num_particles-1);
+   std::discrete_distribution<> dist_weights(weights.begin(), wights.end());
+   std::default_random_engine gen;
+   double max_weight = *max_element(weights.begin(), weights.end());
+   double beta = 0.0;
+   int index = dist_index(gen);
+
+   std::vector<Particle> resampled_particles;
+
+   for (int i=0; i<num_particles; i++) {
+     beta += dist_weights * 2.0 * max_weight;
+
+     while (beta > weights[index]) {
+       beta -= weights[index];
+       index = (index + 1) % num_particles;
+     }
+     resampled_particles.push_back(particles[index]);
+   }
+
+   particles = resampled_particles;
 }
 
 void ParticleFilter::SetAssociations(Particle& particle,
