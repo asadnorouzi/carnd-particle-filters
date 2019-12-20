@@ -168,38 +168,40 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
-  // Get weights and max weight.
-  vector<double> weights;
-  double maxWeight = numeric_limits<double>::min();
-  for(int i = 0; i < num_particles; i++) {
-    weights.push_back(particles[i].weight);
-    if ( particles[i].weight > maxWeight ) {
-      maxWeight = particles[i].weight;
-    }
-  }
+  //implementing Sebastian Thrun's Resampling Wheel method
+     //std::random_device rd;
+     //std::mt19937 gen(rd());
+     std::discrete_distribution<> dist_index(0, num_particles-1);
+     std::discrete_distribution<> dist_weights(weights.begin(), weights.end());
+     std::default_random_engine gen;
+     double max_weight = *max_element(weights.begin(), weights.end());
+     double beta = 0.0;
+     int index = dist_index(gen);
 
-  // Creating distributions.
-  uniform_real_distribution<double> distDouble(0.0, maxWeight);
-  uniform_int_distribution<int> distInt(0, num_particles - 1);
-  default_random_engine gen;
+     std::vector<Particle> resampled_particles;
 
-  // Generating index.
-  int index = distInt(gen);
+     for (int i=0; i<num_particles; i++) {
+       beta += dist_weights(gen) * 2.0 * max_weight;
 
-  double beta = 0.0;
+       while (beta > weights[index]) {
+         beta -= weights[index];
+         index = (index + 1) % num_particles;
+       }
+       resampled_particles.push_back(particles[index]);
+     }
 
-  // the wheel
-  vector<Particle> resampledParticles;
-  for(int i = 0; i < num_particles; i++) {
-    beta += distDouble(gen) * 2.0;
-    while( beta > weights[index]) {
-      beta -= weights[index];
-      index = (index + 1) % num_particles;
-    }
-    resampledParticles.push_back(particles[index]);
-  }
+    particles = resampled_particles;
 
-  particles = resampledParticles;
+    /* Another approach
+    std::random_device seed;
+    std::mt19937 random_generator(seed());
+    // sample particles based on their weight
+    std::discrete_distribution<> sample(weights.begin(), weights.end());
+
+    std::vector<Particle> new_particles(num_particles);
+    for(auto & p : new_particles)
+    p = particles[sample(random_generator)];
+    particles = std::move(new_particles); */
 }
 
 void ParticleFilter::SetAssociations(Particle& particle,
